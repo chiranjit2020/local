@@ -1084,6 +1084,109 @@ function resetToDefault(){
   showToast('Reset to default timetable');
 }
 
+/* ─── LOCALSTORAGE ───────────────────────────────────────────────────── */
+const LS_KEY = 'raillocal_v1';
+
+function saveState() {
+  try {
+    const state = {
+      timetable:      TIMETABLE,
+      stations:       STATIONS,
+      use24h:         use24h,
+      showPast:       showPast,
+      defaultStation: defaultStation,
+      currentThemeIdx:currentThemeIdx,
+      alerts: Object.fromEntries(
+        Object.entries(alerts).map(([k,v]) => [k, { minutesBefore: v.minutesBefore, fired: v.fired }])
+      )
+    };
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+  } catch(e) { /* localStorage unavailable (e.g. Claude sandbox) — silent fail */ }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (s.timetable)       TIMETABLE        = s.timetable;
+    if (s.stations)        STATIONS         = s.stations;
+    if (s.use24h != null)  use24h           = s.use24h;
+    if (s.showPast != null)showPast         = s.showPast;
+    if (s.defaultStation)  defaultStation   = s.defaultStation;
+    if (s.currentThemeIdx != null) currentThemeIdx = s.currentThemeIdx;
+
+    // Apply saved theme immediately
+    const t = THEMES[currentThemeIdx];
+    if (t) {
+      document.documentElement.style.setProperty('--accent', t.hex);
+      document.documentElement.style.setProperty('--accent-rgb', t.accent);
+    }
+
+    // Apply saved toggles to UI controls
+    const tog24 = document.getElementById('toggle24h');
+    if (tog24) tog24.checked = use24h;
+    const togPast = document.getElementById('togglePast');
+    if (togPast) togPast.checked = showPast;
+
+    // Restore alerts (without timers — re-schedule below)
+    if (s.alerts) {
+      Object.entries(s.alerts).forEach(([routeId, al]) => {
+        const route = TIMETABLE.find(r => r.id === routeId);
+        if (!route) return;
+        const msUntil = (parseTime(route.trains[0].dep) - al.minutesBefore - getNowMin()) * 60 * 1000;
+        let timerId = null;
+        if (!al.fired && msUntil > 0) timerId = setTimeout(() => triggerAlert(routeId), msUntil);
+        alerts[routeId] = { ...al, timerId };
+      });
+    }
+
+    // Apply default station filter
+    if (defaultStation && defaultStation !== 'all') currentFilter = defaultStation;
+
+  } catch(e) { /* corrupt data — start fresh */ }
+}
+
+/* Patch every mutating function to auto-save after changes */
+const _orig_confirmAlert     = confirmAlert;
+const _orig_removeAlert      = removeAlert;
+const _orig_clearAllAlerts   = clearAllAlerts;
+const _orig_changeAlertMins  = changeAlertMins;
+const _orig_addNewRoute      = addNewRoute;
+const _orig_deleteRoute      = deleteRoute;
+const _orig_updateRouteStation = updateRouteStation;
+const _orig_updateTrainField = updateTrainField;
+const _orig_toggleTrainType  = toggleTrainType;
+const _orig_removeTrain      = removeTrain;
+const _orig_addTrainToRoute  = addTrainToRoute;
+const _orig_addStation       = addStation;
+const _orig_deleteStation    = deleteStation;
+const _orig_resetToDefault   = resetToDefault;
+const _orig_applyTheme       = applyTheme;
+const _orig_setDefaultStation= setDefaultStation;
+
+confirmAlert     = function(){_orig_confirmAlert();    saveState();};
+removeAlert      = function(id){_orig_removeAlert(id); saveState();};
+clearAllAlerts   = function(){_orig_clearAllAlerts();  saveState();};
+changeAlertMins  = function(a,b){_orig_changeAlertMins(a,b); saveState();};
+addNewRoute      = function(){_orig_addNewRoute();     saveState();};
+deleteRoute      = function(id){_orig_deleteRoute(id); saveState();};
+updateRouteStation=function(a,b,c){_orig_updateRouteStation(a,b,c); saveState();};
+updateTrainField = function(a,b,c,d){_orig_updateTrainField(a,b,c,d); saveState();};
+toggleTrainType  = function(a,b,c){_orig_toggleTrainType(a,b,c); saveState();};
+removeTrain      = function(a,b){_orig_removeTrain(a,b); saveState();};
+addTrainToRoute  = function(id){_orig_addTrainToRoute(id); saveState();};
+addStation       = function(){_orig_addStation();      saveState();};
+deleteStation    = function(s){_orig_deleteStation(s); saveState();};
+resetToDefault   = function(){_orig_resetToDefault();  saveState();};
+applyTheme       = function(i){_orig_applyTheme(i);    saveState();};
+setDefaultStation= function(v){_orig_setDefaultStation(v); saveState();};
+
+const _orig_toggle24h   = toggle24h;
+const _orig_toggleShowPast = toggleShowPast;
+toggle24h       = function(el){_orig_toggle24h(el);        saveState();};
+toggleShowPast  = function(el){_orig_toggleShowPast(el);   saveState();};
+
 /* ─── TOAST ──────────────────────────────────────────────────────────── */
 function showToast(msg){
   const t=document.getElementById('toast');
@@ -1092,9 +1195,11 @@ function showToast(msg){
 }
 
 /* ─── INIT ───────────────────────────────────────────────────────────── */
+loadState();
 buildFilterBar();
 renderThemeSwatches();
 updateNotifPermCard();
+updateAlertsBadge();
 updateClock();
 setInterval(updateClock,1000);
 </script>
