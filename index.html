@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#050a12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>RAIL // LOCAL</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a12;
+    --surface: #0b1220;
+    --surface2: #101928;
+    --surface3: #0e1a2e;
+    --border: rgba(255,255,255,0.06);
+    --text: #e8edf5;
+    --text-muted: #4a5568;
+    --accent: #00e5ff;
+    --warn: #ffb800;
+    --danger: #ff4757;
+    --success: #00e5a0;
+    --primary-time: #ffffff;
+    --secondary-time: #7b93b3;
+    --tag-bg: rgba(0,229,255,0.08);
+    --tag-border: rgba(0,229,255,0.2);
+    --glow: 0 0 20px rgba(0,229,255,0.15);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px; left: -200px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(0,229,255,0.04) 0%, transparent 70%);
+    z-index: 0;
+    pointer-events: none;
+    animation: drift 15s ease-in-out infinite alternate;
+  }
+
+  @keyframes drift { to { transform: translate(100px, 80px); } }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .header {
+    padding: 52px 24px 16px;
+    position: sticky;
+    top: 0;
+    background: linear-gradient(to bottom, var(--bg) 70%, transparent);
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,229,255,0.4);
+  }
+  .logo span { color: var(--text-muted); font-weight: 400; }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    background: var(--tag-bg);
+    border: 1px solid var(--tag-border);
+    padding: 5px 10px;
+    border-radius: 20px;
+  }
+
+  .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  .date-line {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    margin-top: 2px;
+  }
+
+  .clock-bar {
+    margin: 0 24px 16px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .clock-bar::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  .current-time {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    color: var(--primary-time);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .current-time .ampm {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-left: 4px;
+  }
+
+  .next-train-mini { text-align: right; }
+  .next-label { font-size: 9px; letter-spacing: 0.15em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px; }
+  .next-train-info { font-size: 13px; color: var(--accent); font-weight: 500; }
+
+  .filter-bar {
+    padding: 0 24px 16px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
+
+  .filter-btn {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .filter-btn.active {
+    background: var(--tag-bg);
+    border-color: var(--tag-border);
+    color: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  .page { display: none; flex-direction: column; flex: 1; }
+  .page.active { display: flex; }
+
+  .section-label {
+    padding: 0 24px 12px;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  .routes {
+    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 100px;
+  }
+
+  .route-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+  }
+
+  .route-card:hover {
+    border-color: rgba(0,229,255,0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4), var(--glow);
+  }
+
+  .route-card.next-up {
+    border-color: rgba(0,229,255,0.25);
+    background: linear-gradient(135deg, var(--surface), rgba(0,229,255,0.03));
+  }
+
+  .route-card.next-up .corner-badge { content: 'NEXT'; display: block; }
+  .corner-badge {
+    display: none;
+    position: absolute;
+    top: 12px; right: 12px;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    background: var(--tag-bg);
+    border: 1px solid var(--tag-border);
+    padding: 3px 8px;
+    border-radius: 4px;
+    pointer-events: none;
+  }
+
+  .route-card.has-alert .corner-badge {
+    display: block;
+    color: var(--warn);
+    background: rgba(255,184,0,0.08);
+    border-color: rgba(255,184,0,0.3);
+  }
+
+  .route-card.next-up.has-alert .corner-badge { color: var(--warn); background: rgba(255,184,0,0.08); border-color: rgba(255,184,0,0.3); }
+  .route-card.next-up:not(.has-alert) .corner-badge { color: var(--accent); background: var(--tag-bg); border-color: var(--tag-border); }
+
+  .route-card.past { opacity: 0.4; }
+  .route-card.has-alert { border-color: rgba(255,184,0,0.2); }
+
+  .route-header {
+    padding: 14px 16px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.015);
+  }
+
+  .station-tag {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .route-arrow { flex: 1; display: flex; align-items: center; }
+
+  .arrow-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, rgba(255,255,255,0.15), rgba(0,229,255,0.3));
+    position: relative;
+  }
+
+  .arrow-line::after {
+    content: '▸';
+    position: absolute;
+    right: -4px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: rgba(0,229,255,0.5);
+  }
+
+  .duration-badge { font-size: 10px; color: var(--text-muted); letter-spacing: 0.05em; white-space: nowrap; }
+
+  .times-block { padding: 12px 16px 14px; }
+
+  .time-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+  }
+  .time-row + .time-row { border-top: 1px solid var(--border); }
+
+  .time-row.primary .dep-time,
+  .time-row.primary .arr-time {
+    font-size: 22px;
+    color: var(--primary-time);
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .time-row.secondary .dep-time,
+  .time-row.secondary .arr-time {
+    font-size: 18px;
+    color: var(--secondary-time);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .time-sep { font-size: 11px; color: var(--text-muted); }
+  .time-row.primary .time-sep { color: rgba(0,229,255,0.5); }
+
+  .status-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    margin-right: 6px;
+    flex-shrink: 0;
+    display: inline-block;
+  }
+  .status-dot.on-time { background: var(--success); }
+  .status-dot.upcoming { background: var(--accent); animation: pulse 2s infinite; }
+  .status-dot.gone { background: var(--text-muted); }
+
+  .countdown {
+    padding: 0 16px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .countdown-label { font-size: 10px; color: var(--text-muted); letter-spacing: 0.1em; }
+  .countdown-time { font-size: 13px; color: var(--accent); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  .route-card.expanded .detail-panel { display: block; }
+
+  .detail-panel {
+    display: none;
+    border-top: 1px solid var(--border);
+    background: rgba(0,229,255,0.015);
+  }
+
+  .detail-rows { padding: 12px 16px 8px; }
+
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    padding: 4px 0;
+  }
+  .detail-row span:last-child { color: var(--text); }
+
+  .set-alert-btn {
+    width: calc(100% - 32px);
+    margin: 4px 16px 14px;
+    padding: 11px;
+    border-radius: 8px;
+    border: 1px dashed rgba(255,184,0,0.3);
+    background: rgba(255,184,0,0.04);
+    color: var(--warn);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .set-alert-btn:hover { background: rgba(255,184,0,0.09); border-color: rgba(255,184,0,0.5); }
+  .set-alert-btn.active-alert { border-color: rgba(255,184,0,0.5); background: rgba(255,184,0,0.09); }
+
+  /* ── ALERTS PAGE ── */
+  .alerts-page { padding: 0 16px; padding-bottom: 100px; }
+
+  .alerts-header {
+    padding: 0 24px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .alerts-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--text);
+  }
+
+  .clear-all-btn {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--danger);
+    background: none;
+    border: 1px solid rgba(255,71,87,0.25);
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    transition: all 0.2s;
+  }
+  .clear-all-btn:hover { background: rgba(255,71,87,0.08); }
+
+  .notif-perm-card {
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.3s;
+  }
+  .notif-perm-card.granted { border-color: rgba(0,229,160,0.2); }
+  .notif-perm-card.denied { border-color: rgba(255,71,87,0.2); }
+
+  .notif-perm-icon { font-size: 22px; flex-shrink: 0; }
+  .notif-perm-text { flex: 1; }
+  .notif-perm-text h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .notif-perm-text p { font-size: 10px; color: var(--text-muted); letter-spacing: 0.04em; line-height: 1.5; }
+
+  .notif-action-btn {
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    border: 1px solid var(--tag-border);
+    background: var(--tag-bg);
+    color: var(--accent);
+    white-space: nowrap;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .alert-card {
+    background: var(--surface);
+    border: 1px solid rgba(255,184,0,0.15);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .alert-card-header {
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,184,0,0.02);
+  }
+
+  .alert-bell {
+    font-size: 18px;
+    flex-shrink: 0;
+    animation: ringBell 4s ease-in-out infinite;
+  }
+
+  @keyframes ringBell {
+    0%, 85%, 100% { transform: rotate(0); }
+    87% { transform: rotate(14deg); }
+    89% { transform: rotate(-14deg); }
+    91% { transform: rotate(9deg); }
+    93% { transform: rotate(-5deg); }
+    95% { transform: rotate(0); }
+  }
+
+  .alert-route { flex: 1; }
+  .alert-route-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.08em;
+  }
+  .alert-sub { font-size: 10px; color: var(--text-muted); letter-spacing: 0.06em; margin-top: 2px; }
+
+  .alert-delete-btn {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,71,87,0.2);
+    background: rgba(255,71,87,0.05);
+    color: var(--danger);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .alert-delete-btn:hover { background: rgba(255,71,87,0.15); }
+
+  .alert-body {
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .alert-dep-time {
+    font-size: 22px;
+    color: var(--primary-time);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+
+  .alert-countdown { font-size: 10px; color: var(--warn); letter-spacing: 0.08em; }
+
+  .mins-label { font-size: 9px; letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 6px; text-align: right; }
+
+  .mins-chips { display: flex; gap: 4px; }
+
+  .mins-chip {
+    padding: 5px 9px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.18s;
+    letter-spacing: 0.05em;
+  }
+  .mins-chip.active {
+    border-color: rgba(255,184,0,0.4);
+    background: rgba(255,184,0,0.1);
+    color: var(--warn);
+  }
+
+  .alert-status-bar {
+    padding: 6px 14px 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .alert-status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--warn);
+    animation: pulse 2s infinite;
+  }
+  .alert-status-text { font-size: 10px; color: var(--warn); letter-spacing: 0.08em; }
+  .alert-status-bar.fired .alert-status-dot { background: var(--success); animation: none; }
+  .alert-status-bar.fired .alert-status-text { color: var(--success); }
+
+  .alerts-empty {
+    text-align: center;
+    padding: 50px 24px 40px;
+  }
+  .alerts-empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.25; }
+  .alerts-empty-text { font-size: 12px; color: var(--text-muted); letter-spacing: 0.1em; line-height: 1.8; }
+  .alerts-hint {
+    margin-top: 20px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: left;
+    line-height: 1.7;
+    letter-spacing: 0.04em;
+  }
+  .alerts-hint span { color: var(--accent); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.78);
+    backdrop-filter: blur(8px);
+    z-index: 500;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--surface3);
+    border: 1px solid rgba(255,184,0,0.15);
+    border-bottom: none;
+    border-radius: 20px 20px 0 0;
+    padding: 24px 24px 44px;
+    width: 100%;
+    max-width: 430px;
+    transform: translateY(100%);
+    transition: transform 0.38s cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-handle {
+    width: 40px; height: 4px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 2px;
+    margin: 0 auto 22px;
+  }
+
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .modal-sub { font-size: 11px; color: var(--text-muted); letter-spacing: 0.06em; margin-bottom: 22px; }
+
+  .modal-route-display {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-route-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .modal-route-meta { font-size: 10px; color: var(--text-muted); letter-spacing: 0.05em; }
+  .modal-dep-time { font-size: 22px; color: var(--primary-time); font-variant-numeric: tabular-nums; font-weight: 500; }
+
+  .modal-section-label { font-size: 10px; letter-spacing: 0.15em; color: var(--text-muted); margin-bottom: 10px; }
+
+  .modal-chips {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  .modal-chip {
+    flex: 1;
+    padding: 12px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.18s;
+    letter-spacing: 0.06em;
+    text-align: center;
+  }
+  .modal-chip.selected {
+    border-color: rgba(255,184,0,0.5);
+    background: rgba(255,184,0,0.1);
+    color: var(--warn);
+    box-shadow: 0 0 14px rgba(255,184,0,0.1);
+  }
+
+  .modal-confirm-btn {
+    width: 100%;
+    padding: 15px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(255,184,0,0.15), rgba(255,184,0,0.07));
+    border: 1px solid rgba(255,184,0,0.38);
+    color: var(--warn);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 10px;
+  }
+  .modal-confirm-btn:hover { background: linear-gradient(135deg, rgba(255,184,0,0.22), rgba(255,184,0,0.12)); }
+
+  .modal-cancel-btn {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+  }
+
+  /* ── IN-APP NOTIFICATION BANNER ── */
+  .notif-alert-banner {
+    position: fixed;
+    top: 0; left: 50%;
+    transform: translateX(-50%) translateY(-130%);
+    width: 100%;
+    max-width: 430px;
+    z-index: 600;
+    transition: transform 0.42s cubic-bezier(0.34, 1.4, 0.64, 1);
+    padding: 0 12px;
+    pointer-events: none;
+  }
+  .notif-alert-banner.show { transform: translateX(-50%) translateY(0); pointer-events: all; }
+
+  .notif-alert-inner {
+    margin-top: 14px;
+    background: rgba(14, 26, 46, 0.97);
+    border: 1px solid rgba(255,184,0,0.35);
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6), 0 0 24px rgba(255,184,0,0.12);
+  }
+
+  .notif-alert-icon { font-size: 26px; flex-shrink: 0; }
+  .notif-alert-text { flex: 1; }
+  .notif-alert-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .notif-alert-sub { font-size: 11px; color: var(--warn); letter-spacing: 0.05em; }
+  .notif-close { font-size: 18px; color: var(--text-muted); cursor: pointer; flex-shrink: 0; background: none; border: none; }
+
+  /* ── BOTTOM NAV ── */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%; transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    background: rgba(5, 10, 18, 0.93);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    z-index: 200;
+  }
+
+  .nav-btn {
+    flex: 1;
+    padding: 14px 8px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    transition: color 0.2s;
+    position: relative;
+  }
+  .nav-btn.active { color: var(--accent); }
+  .nav-icon { font-size: 20px; line-height: 1; }
+
+  .nav-badge {
+    position: absolute;
+    top: 8px; right: calc(50% - 18px);
+    width: 17px; height: 17px;
+    border-radius: 50%;
+    background: var(--warn);
+    color: #000;
+    font-size: 9px;
+    font-weight: 700;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+  }
+  .nav-badge.show { display: flex; }
+
+  .toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--surface2);
+    border: 1px solid var(--tag-border);
+    color: var(--accent);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    padding: 10px 20px;
+    border-radius: 8px;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 300;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100vh); }
+  }
+  .scanline {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(to bottom, transparent, rgba(0,229,255,0.05), transparent);
+    animation: scanline 6s linear infinite;
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--text-muted);
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    display: none;
+  }
+  .empty-state.show { display: block; }
+
+  @media (max-width: 360px) {
+    .time-row.primary .dep-time, .time-row.primary .arr-time { font-size: 18px; }
+    .time-row.secondary .dep-time, .time-row.secondary .arr-time { font-size: 15px; }
+    .station-tag { font-size: 10px; padding: 4px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="scanline"></div>
+
+<!-- In-app notification banner -->
+<div class="notif-alert-banner" id="notifBanner">
+  <div class="notif-alert-inner">
+    <div class="notif-alert-icon">🔔</div>
+    <div class="notif-alert-text">
+      <div class="notif-alert-title" id="notifBannerTitle">Train Departing Soon</div>
+      <div class="notif-alert-sub" id="notifBannerSub">BANGAON → HABRA in 10 minutes</div>
+    </div>
+    <button class="notif-close" onclick="closeBanner()">✕</button>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- Shared header -->
+  <div class="header">
+    <div class="header-top">
+      <div class="logo">RAIL <span>//</span> LOCAL</div>
+      <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    </div>
+    <div class="date-line" id="dateDisplay">—</div>
+  </div>
+
+  <!-- ── SCHEDULE PAGE ── -->
+  <div class="page active" id="schedulePage">
+    <div class="clock-bar">
+      <div>
+        <div class="current-time" id="clockDisplay">—<span class="ampm" id="ampmDisplay"></span></div>
+        <div class="date-line" style="margin-top:4px;">WB LOCAL RAIL</div>
+      </div>
+      <div class="next-train-mini">
+        <div class="next-label">Next Train</div>
+        <div class="next-train-info" id="nextTrainMini">Calculating…</div>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="filterRoutes('all', this)">ALL</button>
+      <button class="filter-btn" onclick="filterRoutes('HABRA', this)">HABRA</button>
+      <button class="filter-btn" onclick="filterRoutes('BANGAON', this)">BANGAON</button>
+      <button class="filter-btn" onclick="filterRoutes('RANAGHAT', this)">RANAGHAT</button>
+      <button class="filter-btn" onclick="filterRoutes('SHANTIPUR', this)">SHANTIPUR</button>
+    </div>
+
+    <div class="section-label">TODAY'S SCHEDULE</div>
+    <div class="routes" id="routesContainer"></div>
+    <div class="empty-state" id="emptyState">NO TRAINS FOUND<br><span style="font-size:11px;margin-top:6px;display:block;">Try a different filter</span></div>
+  </div>
+
+  <!-- ── ALERTS PAGE ── -->
+  <div class="page" id="alertsPage">
+    <div class="alerts-header">
+      <div class="alerts-title">ALERTS</div>
+      <button class="clear-all-btn" onclick="clearAllAlerts()">CLEAR ALL</button>
+    </div>
+
+    <div class="alerts-page">
+      <!-- Permission card -->
+      <div class="notif-perm-card" id="notifPermCard">
+        <div class="notif-perm-icon" id="notifPermIcon">🔔</div>
+        <div class="notif-perm-text">
+          <h4 id="notifPermTitle">Enable Notifications</h4>
+          <p id="notifPermDesc">Get push alerts before departure, even when app is in background.</p>
+        </div>
+        <button class="notif-action-btn" id="notifPermBtn" onclick="requestNotifPermission()">ENABLE</button>
+      </div>
+
+      <div id="alertCardsList"></div>
+
+      <div id="alertsEmptyState" class="alerts-empty">
+        <div class="alerts-empty-icon">🔕</div>
+        <div class="alerts-empty-text">NO ACTIVE ALERTS<br>SET UP REMINDERS BELOW</div>
+        <div class="alerts-hint">
+          Go to <span>SCHEDULE</span> → tap any train card to expand → tap <span>SET ALERT</span> to be reminded before departure.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <button class="nav-btn active" id="navSchedule" onclick="switchPage('schedule')">
+    <span class="nav-icon">⊞</span>
+    SCHEDULE
+  </button>
+  <button class="nav-btn" id="navAlerts" onclick="switchPage('alerts')">
+    <span class="nav-icon">🔔</span>
+    ALERTS
+    <span class="nav-badge" id="alertsBadge">0</span>
+  </button>
+  <button class="nav-btn" onclick="showToast('SAVED — Coming soon')">
+    <span class="nav-icon">◇</span>
+    SAVED
+  </button>
+  <button class="nav-btn" onclick="showToast('SETTINGS — Coming soon')">
+    <span class="nav-icon">≡</span>
+    MORE
+  </button>
+</div>
+
+<!-- Alert Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOnBg(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">SET ALERT</div>
+    <div class="modal-sub">Remind me before this train departs</div>
+
+    <div class="modal-route-display">
+      <div>
+        <div class="modal-route-name" id="modalRouteName">—</div>
+        <div class="modal-route-meta" id="modalRouteMeta">—</div>
+      </div>
+      <div class="modal-dep-time" id="modalDepTime">—</div>
+    </div>
+
+    <div class="modal-section-label">REMIND ME</div>
+    <div class="modal-chips">
+      <button class="modal-chip" data-val="5" onclick="selectModalChip(this)">5 MIN</button>
+      <button class="modal-chip selected" data-val="10" onclick="selectModalChip(this)">10 MIN</button>
+      <button class="modal-chip" data-val="15" onclick="selectModalChip(this)">15 MIN</button>
+      <button class="modal-chip" data-val="30" onclick="selectModalChip(this)">30 MIN</button>
+    </div>
+
+    <button class="modal-confirm-btn" onclick="confirmAlert()">🔔 &nbsp;SET REMINDER</button>
+    <button class="modal-cancel-btn" onclick="closeModal()">CANCEL</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TIMETABLE = [
+  { id:'h-b', from:'HABRA',    to:'BANGAON',   trains:[{dep:'06:07',arr:'06:50',type:'primary'},{dep:'06:24',arr:'07:05',type:'secondary'}] },
+  { id:'b-r', from:'BANGAON',  to:'RANAGHAT',  trains:[{dep:'07:07',arr:'08:05',type:'primary'},{dep:'08:27',arr:'09:15',type:'secondary'}] },
+  { id:'r-s', from:'RANAGHAT', to:'SHANTIPUR', trains:[{dep:'08:10',arr:'08:37',type:'primary'},{dep:'09:15',arr:'09:42',type:'secondary'}] },
+  { id:'s-r', from:'SHANTIPUR',to:'RANAGHAT',  trains:[{dep:'14:07',arr:'14:35',type:'primary'},{dep:'14:27',arr:'14:55',type:'secondary'}] },
+  { id:'r-b', from:'RANAGHAT', to:'BANGAON',   trains:[{dep:'15:25',arr:'16:10',type:'primary'},{dep:'16:34',arr:'17:20',type:'secondary'}] },
+  { id:'b-h', from:'BANGAON',  to:'HABRA',     trains:[{dep:'16:15',arr:'16:49',type:'primary'},{dep:'16:53',arr:'17:27',type:'secondary'}] }
+];
+
+let alerts = {};
+let currentFilter = 'all';
+let nextTrainCardId = null;
+let modalRouteId = null;
+let modalSelectedMins = 10;
+let currentPage = 'schedule';
+let bannerTimeout = null;
+
+function parseTime(s) { const [h,m] = s.split(':').map(Number); return h*60+m; }
+
+function formatTime(s) {
+  const [h,m] = s.split(':').map(Number);
+  const ap = h>=12?'PM':'AM', hh = h%12||12;
+  return `${String(hh).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ap}`;
+}
+
+function getDuration(dep,arr) {
+  const d = parseTime(arr)-parseTime(dep);
+  const h=Math.floor(d/60), m=d%60;
+  return h>0?`${h}h ${m}m`:`${m}m`;
+}
+
+function getNowMin() {
+  const n=new Date(); return n.getHours()*60+n.getMinutes();
+}
+
+function getCountdown(depStr) {
+  const d=parseTime(depStr)-getNowMin();
+  if(d<=0) return null;
+  if(d>=60){const h=Math.floor(d/60),m=d%60;return`${h}h ${m}m away`;}
+  return `${d}m away`;
+}
+
+function findNextTrain() {
+  const now=getNowMin(); let best=Infinity,info=null;
+  for(const r of TIMETABLE) for(const t of r.trains){
+    const d=parseTime(t.dep);
+    if(d>now&&d<best){best=d;info={...t,from:r.from,to:r.to,routeId:r.id};}
+  }
+  return info;
+}
+
+// ─── CLOCK ───
+function updateClock() {
+  const now=new Date();
+  const h=now.getHours()%12||12, m=String(now.getMinutes()).padStart(2,'0'), s=String(now.getSeconds()).padStart(2,'0');
+  const ap=now.getHours()>=12?'PM':'AM';
+  const cl=document.getElementById('clockDisplay');
+  if(cl) cl.childNodes[0].textContent=`${String(h).padStart(2,'0')}:${m}:${s}`;
+  const am=document.getElementById('ampmDisplay');
+  if(am) am.textContent=ap;
+  const days=['SUN','MON','TUE','WED','THU','FRI','SAT'],months=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const de=document.getElementById('dateDisplay');
+  if(de) de.textContent=`${days[now.getDay()]} ${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  const next=findNextTrain();
+  const mi=document.getElementById('nextTrainMini');
+  if(mi){
+    if(next){const cd=getCountdown(next.dep);mi.textContent=cd?`${next.from} → ${next.to} · ${cd}`:'DEPARTING';nextTrainCardId=next.routeId;}
+    else{mi.textContent='No more today';nextTrainCardId=null;}
+  }
+  checkAlerts();
+  if(currentPage==='schedule') renderRoutes();
+  else renderAlertCards();
+}
+
+// ─── PAGES ───
+function switchPage(page) {
+  currentPage=page;
+  document.getElementById('schedulePage').classList.toggle('active',page==='schedule');
+  document.getElementById('alertsPage').classList.toggle('active',page==='alerts');
+  document.getElementById('navSchedule').classList.toggle('active',page==='schedule');
+  document.getElementById('navAlerts').classList.toggle('active',page==='alerts');
+  if(page==='alerts') renderAlertCards();
+}
+
+// ─── SCHEDULE ───
+function filterRoutes(f,btn) {
+  currentFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRoutes();
+}
+
+function renderRoutes() {
+  const container=document.getElementById('routesContainer');
+  const empty=document.getElementById('emptyState');
+  const nowMin=getNowMin();
+  let filtered=currentFilter==='all'?TIMETABLE:TIMETABLE.filter(r=>r.from===currentFilter||r.to===currentFilter);
+  if(!filtered.length){container.innerHTML='';empty.classList.add('show');return;}
+  empty.classList.remove('show');
+
+  const existing=container.querySelectorAll('.route-card');
+  if(existing.length===filtered.length){
+    filtered.forEach((route,i)=>{
+      const card=existing[i];
+      const isPast=route.trains.every(t=>parseTime(t.dep)<=nowMin);
+      const isNext=route.id===nextTrainCardId;
+      const hasAlert=!!alerts[route.id];
+      if(!isPast) card.classList.toggle('next-up',isNext);
+      card.classList.toggle('has-alert',hasAlert);
+      const badge=card.querySelector('.corner-badge');
+      if(badge){
+        if(hasAlert) badge.textContent='🔔 ALERT';
+        else if(isNext) badge.textContent='NEXT';
+        badge.style.display=(hasAlert||isNext)?'block':'none';
+      }
+      const cdEl=card.querySelector('.countdown-time');
+      if(cdEl){const cd=getCountdown(route.trains[0].dep);if(cd)cdEl.textContent=cd;else{const cw=card.querySelector('.countdown');if(cw)cw.remove();}}
+      const alertBtn=card.querySelector('.set-alert-btn');
+      if(alertBtn){
+        if(hasAlert){alertBtn.innerHTML=`🔔 &nbsp;ALERT SET — ${alerts[route.id].minutesBefore}MIN BEFORE &nbsp;·&nbsp; REMOVE`;alertBtn.classList.add('active-alert');alertBtn.onclick=function(e){e.stopPropagation();removeAlert(route.id);};}
+        else{alertBtn.innerHTML=`+ &nbsp;SET ALERT`;alertBtn.classList.remove('active-alert');alertBtn.onclick=function(e){e.stopPropagation();openModal(route.id);};}
+      }
+    });
+    return;
+  }
+
+  container.innerHTML='';
+  filtered.forEach(route=>{
+    const allPast=route.trains.every(t=>parseTime(t.dep)<=nowMin);
+    const isNext=route.id===nextTrainCardId;
+    const hasAlert=!!alerts[route.id];
+    const pt=route.trains[0];
+    const cd=getCountdown(pt.dep);
+    const badgeText=hasAlert?'🔔 ALERT':isNext?'NEXT':'';
+    const trainsHTML=route.trains.map(t=>`
+      <div class="time-row ${t.type}">
+        <div style="display:flex;align-items:center;">
+          <span class="status-dot ${allPast?'gone':isNext&&t.type==='primary'?'upcoming':'on-time'}"></span>
+          <span class="dep-time">${formatTime(t.dep)}</span>
+        </div>
+        <span class="time-sep">${t.type==='primary'?'——→':'- - →'}</span>
+        <span class="arr-time">${formatTime(t.arr)}</span>
+      </div>`).join('');
+    const cdHTML=cd&&!allPast?`<div class="countdown"><span class="countdown-label">DEP IN</span><span class="countdown-time">${cd}</span></div>`:'';
+    const alertBtnHTML=!allPast?`<button class="set-alert-btn${hasAlert?' active-alert':''}" onclick="event.stopPropagation();${hasAlert?`removeAlert('${route.id}')`:`openModal('${route.id}')`}">
+      ${hasAlert?`🔔 &nbsp;ALERT SET — ${alerts[route.id].minutesBefore}MIN BEFORE &nbsp;·&nbsp; REMOVE`:'+ &nbsp;SET ALERT'}
+    </button>`:'';
+    const card=document.createElement('div');
+    card.className=`route-card${allPast?' past':''}${isNext?' next-up':''}${hasAlert?' has-alert':''}`;
+    card.dataset.id=route.id;
+    card.innerHTML=`
+      <span class="corner-badge" style="display:${badgeText?'block':'none'}">${badgeText}</span>
+      <div class="route-header">
+        <span class="station-tag">${route.from}</span>
+        <div class="route-arrow"><div class="arrow-line"></div></div>
+        <span class="duration-badge">${getDuration(pt.dep,pt.arr)}</span>
+        <div style="width:8px;flex-shrink:0;"></div>
+        <span class="station-tag">${route.to}</span>
+      </div>
+      <div class="times-block">${trainsHTML}</div>
+      ${cdHTML}
+      <div class="detail-panel">
+        <div class="detail-rows">
+          <div class="detail-row"><span>ROUTE</span><span>${route.from} → ${route.to}</span></div>
+          <div class="detail-row"><span>JOURNEY</span><span>${getDuration(pt.dep,pt.arr)}</span></div>
+          <div class="detail-row"><span>OPTIONS</span><span>${route.trains.length} TRAINS</span></div>
+          <div class="detail-row"><span>STATUS</span><span>${allPast?'COMPLETED':isNext?'NEXT UP':'SCHEDULED'}</span></div>
+        </div>
+        ${alertBtnHTML}
+      </div>`;
+    card.addEventListener('click',()=>card.classList.toggle('expanded'));
+    container.appendChild(card);
+  });
+}
+
+// ─── MODAL ───
+function openModal(routeId) {
+  const route=TIMETABLE.find(r=>r.id===routeId);
+  if(!route)return;
+  modalRouteId=routeId; modalSelectedMins=10;
+  document.getElementById('modalRouteName').textContent=`${route.from} → ${route.to}`;
+  document.getElementById('modalRouteMeta').textContent=`DEP ${formatTime(route.trains[0].dep)} · ARR ${formatTime(route.trains[0].arr)}`;
+  document.getElementById('modalDepTime').textContent=formatTime(route.trains[0].dep);
+  document.querySelectorAll('.modal-chip').forEach(c=>c.classList.toggle('selected',c.dataset.val==='10'));
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); modalRouteId=null; }
+function closeModalOnBg(e) { if(e.target===document.getElementById('modalOverlay')) closeModal(); }
+function selectModalChip(btn) { document.querySelectorAll('.modal-chip').forEach(c=>c.classList.remove('selected')); btn.classList.add('selected'); modalSelectedMins=parseInt(btn.dataset.val); }
+
+function confirmAlert() {
+  if(!modalRouteId) return;
+  const route=TIMETABLE.find(r=>r.id===modalRouteId);
+  if(!route) return;
+  if(alerts[modalRouteId]?.timerId) clearTimeout(alerts[modalRouteId].timerId);
+  const depMin=parseTime(route.trains[0].dep);
+  const alertMin=depMin-modalSelectedMins;
+  const nowMin=getNowMin();
+  const msUntil=(alertMin-nowMin)*60*1000;
+  let timerId=null;
+  if(msUntil>0) timerId=setTimeout(()=>triggerAlert(modalRouteId),msUntil);
+  alerts[modalRouteId]={minutesBefore:modalSelectedMins,fired:msUntil<=0,timerId,routeId:modalRouteId};
+  closeModal();
+  updateAlertsBadge();
+  renderRoutes();
+  renderAlertCards();
+  showToast(`🔔 Alert set — ${modalSelectedMins}min before ${route.from} → ${route.to}`);
+}
+
+function removeAlert(routeId) {
+  if(alerts[routeId]?.timerId) clearTimeout(alerts[routeId].timerId);
+  delete alerts[routeId];
+  updateAlertsBadge();
+  renderRoutes();
+  renderAlertCards();
+  showToast('Alert removed');
+}
+
+function clearAllAlerts() {
+  Object.values(alerts).forEach(a=>{if(a.timerId)clearTimeout(a.timerId);});
+  alerts={};
+  updateAlertsBadge();
+  renderRoutes();
+  renderAlertCards();
+  showToast('All alerts cleared');
+}
+
+// ─── ALERT CARDS ───
+function renderAlertCards() {
+  const list=document.getElementById('alertCardsList');
+  const empty=document.getElementById('alertsEmptyState');
+  const keys=Object.keys(alerts);
+  if(!keys.length){list.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  list.innerHTML='';
+  keys.forEach(routeId=>{
+    const al=alerts[routeId];
+    const route=TIMETABLE.find(r=>r.id===routeId);
+    if(!route) return;
+    const dep=route.trains[0].dep;
+    const depMin=parseTime(dep);
+    const diff=depMin-getNowMin();
+    const isFired=al.fired||diff<=0;
+    let cdTxt='';
+    if(isFired) cdTxt=diff<0?'DEPARTED':'DEPARTING NOW';
+    else if(diff<=al.minutesBefore) cdTxt=`⚡ ALERT TRIGGERED · DEPARTS IN ${diff}m`;
+    else cdTxt=`ALERT IN ${diff-al.minutesBefore}m · DEP IN ${diff}m`;
+    const card=document.createElement('div');
+    card.className='alert-card';
+    card.innerHTML=`
+      <div class="alert-card-header">
+        <div class="alert-bell">🔔</div>
+        <div class="alert-route">
+          <div class="alert-route-name">${route.from} → ${route.to}</div>
+          <div class="alert-sub">${al.minutesBefore} MIN BEFORE DEPARTURE</div>
+        </div>
+        <button class="alert-delete-btn" onclick="removeAlert('${routeId}')">✕</button>
+      </div>
+      <div class="alert-body">
+        <div>
+          <div class="alert-dep-time">${formatTime(dep)}</div>
+          <div class="alert-countdown">${cdTxt}</div>
+        </div>
+        <div>
+          <div class="mins-label">CHANGE REMINDER</div>
+          <div class="mins-chips">
+            ${[5,10,15,30].map(m=>`<button class="mins-chip${al.minutesBefore===m?' active':''}" onclick="changeAlertMins('${routeId}',${m})">${m}m</button>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="alert-status-bar${isFired?' fired':''}">
+        <div class="alert-status-dot"></div>
+        <div class="alert-status-text">${isFired?'COMPLETED':'ACTIVE · WATCHING'}</div>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+function changeAlertMins(routeId,mins) {
+  if(!alerts[routeId]) return;
+  if(alerts[routeId].timerId) clearTimeout(alerts[routeId].timerId);
+  const route=TIMETABLE.find(r=>r.id===routeId);
+  const depMin=parseTime(route.trains[0].dep);
+  const msUntil=(depMin-mins-getNowMin())*60*1000;
+  let timerId=null;
+  if(msUntil>0) timerId=setTimeout(()=>triggerAlert(routeId),msUntil);
+  alerts[routeId]={...alerts[routeId],minutesBefore:mins,fired:msUntil<=0,timerId};
+  renderAlertCards();
+  renderRoutes();
+  showToast(`Updated — alert ${mins}min before departure`);
+}
+
+// ─── TRIGGER ───
+function triggerAlert(routeId) {
+  const route=TIMETABLE.find(r=>r.id===routeId);
+  if(!route||!alerts[routeId]) return;
+  alerts[routeId].fired=true;
+  const mins=alerts[routeId].minutesBefore;
+  const title=`🚂 ${route.from} → ${route.to}`;
+  const body=`Departing in ${mins} minutes at ${formatTime(route.trains[0].dep)}`;
+  showNotifBanner(title,body);
+  if(Notification.permission==='granted') new Notification(title,{body,tag:routeId});
+  updateAlertsBadge();
+  renderAlertCards();
+}
+
+function showNotifBanner(title,body) {
+  document.getElementById('notifBannerTitle').textContent=title;
+  document.getElementById('notifBannerSub').textContent=body;
+  const b=document.getElementById('notifBanner');
+  b.classList.add('show');
+  if(bannerTimeout) clearTimeout(bannerTimeout);
+  bannerTimeout=setTimeout(()=>b.classList.remove('show'),7000);
+}
+
+function closeBanner() { document.getElementById('notifBanner').classList.remove('show'); }
+
+// ─── POLLING FALLBACK ───
+function checkAlerts() {
+  const nowMin=getNowMin();
+  Object.keys(alerts).forEach(routeId=>{
+    const al=alerts[routeId];
+    if(al.fired) return;
+    const route=TIMETABLE.find(r=>r.id===routeId);
+    if(!route) return;
+    const alertMin=parseTime(route.trains[0].dep)-al.minutesBefore;
+    if(nowMin>=alertMin) triggerAlert(routeId);
+  });
+}
+
+// ─── NOTIF PERMISSION ───
+function updateNotifPermCard() {
+  const card=document.getElementById('notifPermCard');
+  const btn=document.getElementById('notifPermBtn');
+  const icon=document.getElementById('notifPermIcon');
+  const title=document.getElementById('notifPermTitle');
+  const desc=document.getElementById('notifPermDesc');
+  if(!('Notification' in window)){
+    icon.textContent='⚠️';title.textContent='Not Supported';desc.textContent='Your browser does not support notifications.';btn.style.display='none';return;
+  }
+  if(Notification.permission==='granted'){
+    card.classList.add('granted');icon.textContent='✅';title.textContent='Notifications Enabled';
+    desc.textContent='You will receive push alerts before trains depart.';btn.textContent='MANAGE';btn.onclick=()=>showToast('Manage in browser site settings');
+  } else if(Notification.permission==='denied'){
+    card.classList.add('denied');icon.textContent='🚫';title.textContent='Notifications Blocked';
+    desc.textContent='Enable in browser site settings to receive push alerts.';btn.textContent='HOW TO';btn.onclick=()=>showToast('Browser Settings → Site Settings → Notifications');
+  }
+}
+
+function requestNotifPermission() {
+  if(!('Notification' in window)) return;
+  Notification.requestPermission().then(p=>{
+    updateNotifPermCard();
+    if(p==='granted') showToast('✅ Notifications enabled!');
+    else showToast('Push blocked — in-app alerts still work');
+  });
+}
+
+function updateAlertsBadge() {
+  const count=Object.keys(alerts).length;
+  const badge=document.getElementById('alertsBadge');
+  badge.textContent=count;
+  badge.classList.toggle('show',count>0);
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+// ─── INIT ───
+updateClock();
+setInterval(updateClock,1000);
+updateNotifPermCard();
+</script>
+</body>
+</html>
